@@ -1,0 +1,205 @@
+OPTI DIMENSION 3 MODELE TRID ELEMENT CUB8; 
+**
+scale = 1.;
+EPAISSEUR = 0.4 ; 
+NEP = 4 ; 
+tailleElem = 2 ; 
+MidWidth = scale * 25. ; 
+Width   = scale * 50. ;
+Radius  = scale * 25. ;
+Height  = scale * 45. ; 
+Height2 = scale * 50. ;
+BK = VALE 'COSC' ;
+* Fond blanc pour les graphiques : 
+OPTI 'COSC' 'BLAN' ;
+**
+ToleCaptation = 0.0001 ;
+** Procedure :
+DEBPROC CalculNbElts Nombre1*ENTIER ;
+SI (Nombre1 >EG 1 ) ;
+  Nombre2 = Nombre1 ;
+  MESS 'Conservation' ;
+SINON ;
+  Nombre2 = 1
+  MESS 'Changement' ;
+FINSI ;
+FINPROC Nombre2 ;
+**===================================================================
+** Coordonnes des points :
+**===================================================================
+** Points sur le cote gauche :
+O   = 0. 0. 0. ;
+OO  = 0. Height 0. ; 
+OOO = 0. Height2 0. ; 
+** Debut de l'arc de cercle :
+A = (MidWidth) (0.) 0. ;
+** Points sur le cote droit :
+B   = (MidWidth + Radius) (Radius) 0.;
+BB  = (MidWidth + Radius) (Height) 0. ;
+BBB = (MidWidth + Radius) (Height2) 0. ;
+** Centre de l'arc de cercle : 
+C   = (MidWidth + Radius) (0.) 0.;
+**
+N1 = ENTI 'PROCHE' ((MidWidth + Radius)/TailleElem) ;
+N1 = CalculNbElts N1 ;
+**
+N11 = ENTI 'PROCHE' ((MidWidth )/TailleElem) ;
+N11 = CalculNbElts N11 ;
+L1  = DROI N1 O OO ;
+L2  = DROI N1 OO BB ;
+L22 = DROI N1 OOO BBB ; 
+**
+ARC1 = CERC (2*N1) 'CENTR' A C B ;
+**
+P1 = REGL N11 ARC1 (L1 ET L2) ;
+**
+N2 = ENTI 'PROCHE' ((Height - MidWidth - Radius)/TailleElem) ;
+**
+P2 = REGL (-5) L2 L22 ;
+**
+M_DROITE = P1 ET P2 ; 
+** Symetries : 
+M_GAUCHE = M_DROITE SYME 'DROIT' O OO ; 
+**TRACE M_GAUCHE ; 
+M_HAUT= M_GAUCHE ET M_DROITE ; 
+M_BAS = M_HAUT SYME 'DROIT' O C ; 
+**TRACE M_BAS ; 
+MSURFACE = M_HAUT ET M_BAS ; 
+ELIM MSURFACE ToleCaptation ; 
+**TRACE MSURFACE ; 
+** Volume : 
+MESH = 'VOLUME' MSURFACE 'TRANSLATION' NEP (0. 0. EPAISSEUR) ;
+ELIM MSURFACE 1e-8 ; 
+**TRACE MESH 'CACHE' ; 
+**===================================================================
+** NSET :
+**===================================================================
+** Noeuds symetrie / Z : 
+ZSYM = MESH POIN 'PLAN' O OO A (ToleCaptation) ;
+LISTER (NBNO ZSYM) ; 
+** Noeuds superieur : 
+NODE_TOP = MESH POIN 'PLAN' BBB OOO
+  (0. Height2 EPAISSEUR) (ToleCaptation) ;
+LISTER (NBNO NODE_TOP) ;
+** Noeuds inferieur :
+NODE_BOT = MESH POIN 'PLAN' (0. (-1*Height2) 0.) 
+(MidWidth (-1*Height2) 0.) (0. (-1*Height2) EPAISSEUR) (ToleCaptation) ;
+LISTER (NBNO NODE_BOT) ;
+** Noeuds & elements a la surface : 
+NODE_SURFACE =  MESH POIN 'PLAN' (0. 0. EPAISSEUR) (0. 1. EPAISSEUR)
+  (1. 0. EPAISSEUR) (ToleCaptation); 
+LISTER (NBNO NODE_SURFACE) ;
+ELT_SURFACE = MESH ELEM 'APPU' 'LARG' NODE_SURFACE ; 
+LISTER (NBEL ELT_SURFACE) ; 
+** Noeuds et elements dans la zone d'interet :
+NODE_ROI = (COOR 2 NODE_SURFACE) POIN 'COMPRIS' (-1*Height) (Height) ; 
+NODE_ROI = NODE_ROI 'COULEUR' 'BLEU' ;
+LISTER (NBNO NODE_ROI) ; 
+**trace (NODE_ROI ET ELT_SURFACE) ; 
+NODE_ROI = (COOR 2 NODE_ROI) POIN 'COMPRIS'
+  (-0.999*Height) (0.999*Height) ; 
+NODE_ROI = NODE_ROI 'COULEUR' 'BLEU' ;
+ELT_ROI = MESH ELEM 'APPU' 'LARG' NODE_ROI ;
+ELT_ROI = ELT_ROI "COULEUR" "ROSE" ; 
+LISTER (NBEL ELT_ROI) ; 
+** Determination du contour : 
+NODE_CONTOUR = NODE_SURFACE POIN 'PLAN' (BBB) OOO
+  (0. Height2 EPAISSEUR) (ToleCaptation) ;
+** -> Ajout des noeuds du bas :
+NODE_CONTOUR = NODE_CONTOUR ET
+ (NODE_SURFACE POIN 'PLAN' (0. (-1*Height2) 0.) 
+ (MidWidth (-1*Height2) 0.) (0. (-1*Height2)
+ EPAISSEUR) (ToleCaptation)) ;
+** -> Ajout des noeuds des cotes : 
+NODE_CONTOUR = NODE_CONTOUR ET 
+ (NODE_SURFACE POIN 'PLAN'
+  C
+  ((Radius + MidWidth ) 0. EPAISSEUR)
+  B (ToleCaptation) ) ;
+NODE_CONTOUR = NODE_CONTOUR ET 
+ (NODE_SURFACE POIN 'PLAN'
+  (-1*(Radius + MidWidth) 0. 0.)
+  (-1*(Radius + MidWidth) 0. EPAISSEUR)
+  (-1*(Radius + MidWidth) Radius 0.)
+  (ToleCaptation) ) ;
+NODE_CONTOUR = NODE_CONTOUR ET 
+ (NODE_SURFACE POIN 'CYLI'
+  ((Radius*2) 0. 0.)
+  ((Radius*2) 0. EPAISSEUR)
+  (Radius 0. 0.)
+ (ToleCaptation) ) ;
+NODE_CONTOUR = NODE_CONTOUR ET 
+ (NODE_SURFACE POIN 'CYLI'
+  ((-2*Radius) 0. 0.)
+  ((-2*Radius) 0. EPAISSEUR)
+  (-1*Radius 0. 0.)
+ (ToleCaptation) ) ;
+NODE_CONTOUR = NODE_CONTOUR 'COULEUR' 'ROSE' ;
+TRACE (ELT_SURFACE ET NODE_CONTOUR) ; 
+LISTER (NBNO NODE_CONTOUR) ;
+**trace (ELT_ROI ET ELT_TOP) ; 
+OPTION SORT 'Notched-reference' ;
+SORTIR 'ABAQ' MESH ;
+**-----------------------------------------------------------------------
+**----Maillage pour lapplication des conditions aux limites extraites----
+**-----------------------------------------------------------------------
+REF_GAUCHE = P1 SYME 'DROIT' O OO ; 
+REF_HAUT = REF_GAUCHE ET P1 ; 
+REF_BAS = REF_HAUT SYME "DROIT" O A ;
+MSURFACE = REF_HAUT ET REF_BAS ;
+ELIM MSURFACE 1e-8 ; 
+MESH = 'VOLUME' MSURFACE 'TRANSLATION' NEP (0. 0. EPAISSEUR) ;
+**TRACE MESH 'CACHE' ; 
+NODE_SURFACE =  MESH POIN 'PLAN' (0. 0. EPAISSEUR) (0. 1. EPAISSEUR)
+  (1. 0. EPAISSEUR) (ToleCaptation); 
+ELT_SURFACE = MESH ELEM 'APPU' 'LARG' NODE_SURFACE ; 
+** Noeuds superieur : 
+NODE_TOP = MESH POIN "PLAN" BB OO (0. Height EPAISSEUR)
+  (ToleCaptation) ;
+** Noeuds inferieur :
+NODE_BOT = MESH POIN "PLAN"
+  (0. (-1.*Height) 0.)
+  (MidWidth (-1.*Height) 0.)
+  (0. (-1.*Height) EPAISSEUR)
+  (ToleCaptation) ;
+** Determination du contour : 
+NODE_CONTOUR = NODE_SURFACE POIN 'PLAN'
+ (BBB)
+ (OOO)
+ (0. Height EPAISSEUR)
+ (ToleCaptation) ;
+** -> Ajout des noeuds du bas :
+NODE_CONTOUR = NODE_CONTOUR ET
+ (NODE_SURFACE POIN 'PLAN' (0. (-1*Height) 0.) 
+ (MidWidth (-1*Height) 0.) (0. (-1*Height)
+ EPAISSEUR) (ToleCaptation)) ;
+** -> Ajout des noeuds des cotes : 
+NODE_CONTOUR = NODE_CONTOUR ET 
+ (NODE_SURFACE POIN 'PLAN'
+  C
+  ((Radius + MidWidth ) 0. EPAISSEUR)
+  B (ToleCaptation) ) ;
+NODE_CONTOUR = NODE_CONTOUR ET 
+ (NODE_SURFACE POIN 'PLAN'
+  (-1*(Radius + MidWidth) 0. 0.)
+  (-1*(Radius + MidWidth) 0. EPAISSEUR)
+  (-1*(Radius + MidWidth) Radius 0.)
+  (ToleCaptation) ) ;
+NODE_CONTOUR = NODE_CONTOUR ET 
+ (NODE_SURFACE POIN 'CYLI'
+  ((Radius*2) 0. 0.)
+  ((Radius*2) 0. EPAISSEUR)
+  (Radius 0. 0.)
+ (ToleCaptation) ) ;
+NODE_CONTOUR = NODE_CONTOUR ET 
+ (NODE_SURFACE POIN 'CYLI'
+  ((-2*Radius) 0. 0.)
+  ((-2*Radius) 0. EPAISSEUR)
+  (-1*Radius 0. 0.)
+ (ToleCaptation) ) ;
+NODE_CONTOUR = NODE_CONTOUR 'COULEUR' 'ROSE' ;
+**TRACE (ELT_SURFACE ET NODE_CONTOUR) ; 
+LISTER (NBNO NODE_CONTOUR) ;
+OPTION SORT 'Notched-reduit' ;
+SORTIR 'ABAQ' MESH ;
+FIN; 
