@@ -16,6 +16,29 @@
     - Export des résultats dans le repère de la Caméra\_0 et dans le meilleur plan
     - Utilisation d'un script pour traiter l'ensemble des cas
 
+4. Extraction des conditions aux limites et application dans une seconde simulation EF 
+    - Maillage plus petit sur les parties supérieure et inférieure pour appliquer les conditions aux limites 
+    - Génération des fichiers pour appliquer les conditions aux limites
+
+5. Comparaison des déformées et des champs de déformations entre la simulation de référence et la simulation avec les conditions aux limites extraites des images synthétiques 
+    - Superposition des déformées 
+    - Comparaison points d'intégration à point d'intégration des composantes du tenseur des déformations
+    
+
 ## Simulation numérique de référence
+### Géométrie et conditions aux limites 
+
+### Loi de comportement
 
 ## Génération des images 
+
+## Appplication de la corrélation d'image 
+
+## Extraction des conditions aux limites : 
+### Méthode simplifiée 
+### Méthode développée 
+
+## Résultats 
+### Comparaison des déformées 
+### Comparaison des champs de déformations 
+
