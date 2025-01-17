@@ -25,8 +25,32 @@ dicoInitialisation = {'strPathDicData'     : './DIC-0-0-meilleurPlanIdentifie//'
                       'intStepSize'        : 5,
                       }
 
+dictDisplacementFileOpenning = {'strFolderPath'      : './DIC-0-0-meilleurPlanIdentifie/',
+                                'strFilePrefix'      : 'imageSynthetique-0-0_',
+                                'strFileSuffix'      : '_0.synthetic.tif.csv',
+                                'intZeroNumber'      : 0,
+                                'loadStep'           : np.linspace(1, 10, 10, dtype = int),
+                                'strXnamePixel'      : 'Image X[Pixel]',
+                                'strYnamePixel'      : 'Image Y[Pixel]',
+                                'strUnamePixel'      : 'Horizontal: u[Pixel]',
+                                'strVnamePixel'      : 'Vertical: v[Pixel]',
+                                'strXname'           : 'X[mm]', 
+                                'strYname'           : 'Y[mm]', 
+                                'strZname'           : 'Z[mm]', 
+                                'strUname'           : 'Horizontal Displacement U[mm]',
+                                'strVname'           : 'Vertical Displacement V[mm]',
+                                'strWname'           : 'Out-Of-Plane: W[mm]',
+                                'strFieldsDelimiter' : ';',
+                                }
+
 # Initialisation de la classe :
 DIC_notchedReference = dicData(dicoInitialisation)
+
+# Charger les fichiers de resulats de MatchID : 
+DIC_notchedReference.loadDisplacementResults(dictDisplacementFileOpenning)
+
+# Ajout du tableau correspondance numero_fichier/temps :
+DIC_notchedReference.loadStepTimeFromArray(np.linspace((1, 0.1), (10, 1), 10))
 
 # Chargement du maillage :
 FE_notchedReduit = classAbaqusMesh("Notched-reduit.inp")
@@ -35,8 +59,10 @@ FE_notchedReduit = classAbaqusMesh("Notched-reduit.inp")
 FE_notchedReduit.extract2DconnectivityTable("ELT_SURFACE", "NODE_SURFACE", twoDimensionAssumption=True)
 
 # Determiner les sets de noeuds qui partage la meme valeur en X pour appliquer les conditions aux limites :
-FE_notchedReduit.determineNSET("NODE_BOT", "X", "nSet_BOT.inp")
-quit()
+createNset = False
+if createNset is True : 
+    FE_notchedReduit.determineNSET("NODE_BOT", "X", "BOT", "nSet_BOT.inp", )
+    FE_notchedReduit.determineNSET("NODE_TOP", "X", "TOP", "nSet_TOP.inp", )
 
 # Inverser l'axe y :
 FE_notchedReduit.nodes[:, 1] *= -1
@@ -61,4 +87,30 @@ if PLOT is True :
                                                       )
 
 
+# Extraction des conditions aux limites :
+botNodes = FE_notchedReduit.nodes[FE_notchedReduit.nodeSets['NODE_BOT']]
+botNodes = botNodes[botNodes[:, 2] == 0.4]
+botNodes = botNodes[botNodes[:, 0].argsort()]
 
+dicoExtractionConditionsAuxLimites = {'nodes'                      : botNodes,
+                                      'nSetPrefix'                 : "BOT-",
+                                      'amplitudePrefix'            : "Amplitude-BOT-",
+                                      'amplitudeFileName'          : "amplitudeNsetBOT.inp",
+                                      'boundaryConditionsFileName' : "boundaryConditionsNSetBot.inp",
+                                      }
+
+DIC_notchedReference.boundaryConditionsExtractionUsing_simpleMethod(dicoExtractionConditionsAuxLimites)
+
+
+topNodes = FE_notchedReduit.nodes[FE_notchedReduit.nodeSets['NODE_TOP']]
+topNodes = topNodes[topNodes[:, 2] == 0.4]
+topNodes = topNodes[topNodes[:, 0].argsort()]
+
+dicoExtractionConditionsAuxLimites = {'nodes'                      : topNodes,
+                                      'nSetPrefix'                 : "TOP-",
+                                      'amplitudePrefix'            : "Amplitude-TOP-",
+                                      'boundaryConditionsFileName' : "boundaryConditionsNSetTop.inp",
+                                      'amplitudeFileName'          : "amplitudeNsetTOP.inp",
+                                      }
+
+DIC_notchedReference.boundaryConditionsExtractionUsing_simpleMethod(dicoExtractionConditionsAuxLimites)
